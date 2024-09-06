@@ -4,7 +4,10 @@ import Guess from "./Guess";
 
 const BOARD_SIZE = 6;
 const WORD_SIZE = 5;
-const INITIAL_STATE = Array.from({ length: BOARD_SIZE }, () => "");
+const INITIAL_STATE = Array.from({ length: BOARD_SIZE }, () => ({
+  style: Array.from({ length: WORD_SIZE }, () => ({ backgroundColor: "", transition: "" })),
+  value: "",
+}));
 const specialKeys = [
   "CapsLock",
   "Shift",
@@ -12,7 +15,6 @@ const specialKeys = [
   "Alt",
   "Meta",
   "Escape",
-  "Enter",
   "Tab",
   "ArrowUp",
   "ArrowDown",
@@ -28,7 +30,7 @@ const specialKeys = [
 
 export default function BoardGame() {
   const [word, setWord] = useState("");
-  const [answer, setAnswer] = useState<string[]>(INITIAL_STATE);
+  const [answer, setAnswer] = useState(INITIAL_STATE);
   const [stateGame, setStateGame] = useState<"playing" | "Win" | "Lose">("playing");
   const [turn, setTurn] = useState(0);
 
@@ -38,29 +40,90 @@ export default function BoardGame() {
         switch (event.key) {
           case "Backspace":
             setAnswer((prev) => {
-              const answerArr = [...prev];
-              answerArr[turn] = answerArr[turn].slice(0, -1);
+              const answerArr = prev.map((item) => ({ ...item }));
+              answerArr[turn].value = answerArr[turn].value.slice(0, -1);
               return answerArr;
             });
             break;
-          default:
-            setAnswer((prev) => {
-              const answerArr = [...prev];
-              answerArr[turn] = answerArr[turn] + event.key;
-              return answerArr;
-            });
-
-            if (answer[turn].length + 1 >= WORD_SIZE && turn + 1 == BOARD_SIZE) {
+          case "Enter":
+            checkWord();
+            if (answer[turn].value.length >= WORD_SIZE && turn + 1 == BOARD_SIZE) {
               setStateGame("Lose");
-            } else if (answer[turn].length + 1 == WORD_SIZE) {
+            } else if (answer[turn].value.length == WORD_SIZE) {
               setTurn((prev) => prev + 1);
+            }
+            break;
+          default:
+            if (answer[turn].value.length !== WORD_SIZE) {
+              setAnswer((prev) => {
+                const answerArr = prev.map((item) => ({ ...item }));
+                answerArr[turn].value = answerArr[turn].value + event.key.toUpperCase();
+                return answerArr;
+              });
             }
         }
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [answer, stateGame, turn]
   );
 
+  const checkWord = () => {
+    const letterCount: {
+      [key: string]: {
+        correct: number;
+        total: number;
+      };
+    } = {};
+    const wordCompare = word?.toLowerCase();
+    const answerCompare = answer[turn].value?.toLowerCase();
+    const styles = Array.from({ length: WORD_SIZE }, () => ({
+      backgroundColor: "",
+      transition: "all 0.5s linear",
+    }));
+
+    const correctLetters = Array(answerCompare.length).fill(false);
+
+    answerCompare.split("").forEach((letter, index) => {
+      if (wordCompare[index] === answerCompare[index]) {
+        styles[index].backgroundColor = "#0080006b";
+        correctLetters[index] = true;
+        if (!letterCount[letter]) {
+          letterCount[letter] = { correct: 0, total: 0 };
+        }
+        letterCount[letter].correct++;
+      }
+    });
+
+    // Segunda fase: letras en la posición incorrecta
+    answerCompare.split("").forEach((letter, index) => {
+      if (!correctLetters[index]) {
+        const duplicateWordLetters = wordCompare.split(letter).length - 1;
+
+        if (!letterCount[letter]) {
+          letterCount[letter] = { correct: 0, total: 0 };
+        }
+
+        // Verifica si la letra existe en otra posición
+        if (
+          wordCompare.includes(letter) &&
+          letterCount[letter].correct + letterCount[letter].total < duplicateWordLetters
+        ) {
+          styles[index].backgroundColor = "#ffff00a6";
+          letterCount[letter].total++;
+        } else {
+          styles[index].backgroundColor = "#ff000059";
+        }
+      }
+    });
+
+    setAnswer((prev) => {
+      const answerArr = prev.map((item) => ({ ...item }));
+      answerArr[turn].style = styles;
+      return answerArr;
+    });
+    if (wordCompare == answerCompare) return setStateGame("Win");
+  };
   const resetGame = () => {
     setAnswer(INITIAL_STATE);
     setTurn(0);
@@ -76,6 +139,7 @@ export default function BoardGame() {
       console.error(err);
     }
   };
+
   useEffect(() => {
     window.addEventListener("keydown", handleKeydown);
 
@@ -90,7 +154,7 @@ export default function BoardGame() {
     <section className="board-container">
       {stateGame !== "playing" && <ResultGame STATUS={stateGame} RESET_GAME={resetGame} WORD={word} />}
       {Array.from({ length: BOARD_SIZE }).map((_, index) => (
-        <Guess WORD_SIZE={WORD_SIZE} ANSWER={answer[index]} key={index} WORD={word} CHANGE_STATUS={setStateGame} />
+        <Guess key={index} WORD_SIZE={WORD_SIZE} ANSWER={answer[index]} />
       ))}
     </section>
   );

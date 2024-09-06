@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-
 type Props = { STATUS: "Win" | "Lose"; RESET_GAME: () => void; WORD: string };
 
 export default function ResultGame({ STATUS, RESET_GAME, WORD }: Props) {
@@ -13,8 +12,7 @@ export default function ResultGame({ STATUS, RESET_GAME, WORD }: Props) {
     return () => clearTimeout(timer);
   }, []);
 
-  if (!showResult) return;
-
+  if (!showResult) return "";
   return (
     <div className="result-modal">
       <div className="result-container">
