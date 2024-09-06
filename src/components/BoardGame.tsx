@@ -46,10 +46,11 @@ export default function BoardGame() {
             });
             break;
           case "Enter":
-            checkWord();
             if (answer[turn].value.length >= WORD_SIZE && turn + 1 == BOARD_SIZE) {
+              checkWord();
               setStateGame("Lose");
             } else if (answer[turn].value.length == WORD_SIZE) {
+              checkWord();
               setTurn((prev) => prev + 1);
             }
             break;
